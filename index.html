@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Double Or Nothing!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            text-align: center;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #222;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 400px;
+        }
+        .modal h2 {
+            margin: 0 0 10px;
+            color: cyan;
+        }
+        .modal p {
+            font-size: 14px;
+        }
+        .modal button {
+            margin-top: 15px;
+            padding: 10px 15px;
+            border: none;
+            background: cyan;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .game-container {
+            display: none;
+            margin: auto;
+            max-width: 95%;
+            display: grid;
+            gap: 10px;
+            padding: 10px;
+            justify-items: center;
+            justify-content: center;
+        }
+        .tile {
+            aspect-ratio: 1;
+            background: #333;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            font-size: clamp(1.5rem, 5vw, 3rem); /* Adjusts tile size for all screens */
+            width: 100%;
+            height: auto;
+        }
+        .selected {
+            border: 2px solid cyan;
+        }
+        .match {
+            animation: rainbowBorder 1s;
+        }
+        @keyframes rainbowBorder {
+            0% { border-color: red; }
+            20% { border-color: orange; }
+            40% { border-color: yellow; }
+            60% { border-color: green; }
+            80% { border-color: blue; }
+            100% { border-color: violet; }
+        }
+        .progress-bar {
+            width: 90%;
+            max-width: 400px;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            margin: 15px auto;
+            overflow: hidden;
+        }
+        .progress {
+            width: 0%;
+            height: 100%;
+            background: cyan;
+            transition: width 0.3s;
+        }
+        .level {
+            font-size: 1.5rem;
+            margin: 20px 0;
+            color: cyan;
+        }
+        /* Adjustments for small screens */
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 5px;
+            }
+            .tile {
+                font-size: clamp(1.2rem, 5vw, 2rem); /* Slightly smaller tiles for mobile */
+            }
+            .progress-bar {
+                width: 80%;
+            }
+            .level {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="modal" id="startModal">
+    <div class="modal-content">
+        <h1>Double Or Nothing!</h1>
+        <h2>Developed By: Richie</h2>
+        <p>Dedicated to Grandpa with Dementia | Brain Stimulation Game</p>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+</div>
+
+<div class="game-header">
+    <h1>Double Or Nothing!</h1>
+    <p>The objective of the game is to match tiles by clicking on two similar tiles to form a pair. Collecting 10 pairs fills up the progress bar, allowing you to level up where more tiles are introduced.</p>
+    <p1>[Developed By Richie]</p1>
+</div>
+
+<div class="level" id="levelDisplay">Level: 1</div>
+
+<div class="progress-bar">
+    <div class="progress" id="progress"></div>
+</div>
+
+<div class="game-container" id="gameContainer"></div>
+
+<script>
+    const images = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐷", "🐸", "🐵", "🦁", "🐯", "🦄", "🐔", "🦆", "🐠", "🐙"];
+    let gridSize = 6;
+    let firstTile = null;
+    let secondTile = null;
+    let matches = 0;
+    let level = 1;
+
+    function startGame() {
+        document.getElementById("startModal").style.display = "none";
+        document.getElementById("gameContainer").style.display = "grid";
+        document.getElementById("levelDisplay").textContent = `Level: ${level}`;
+        generateGrid();
+    }
+
+    function generateGrid() {
+        const gameContainer = document.getElementById("gameContainer");
+        gameContainer.innerHTML = "";
+        gameContainer.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+
+        let pairs = [];
+        for (let i = 0; i < (gridSize * gridSize) / 2; i++) {
+            let img = images[i % images.length];
+            pairs.push(img, img);
+        }
+        pairs = shuffleTiles(pairs);
+
+        pairs.forEach((emoji) => {
+            let tile = document.createElement("div");
+            tile.classList.add("tile");
+            tile.dataset.emoji = emoji;
+            tile.innerHTML = emoji;
+            tile.addEventListener("click", () => selectTile(tile));
+            gameContainer.appendChild(tile);
+        });
+    }
+
+    function selectTile(tile) {
+        if (tile.classList.contains("match") || tile === firstTile) return;
+
+        tile.classList.add("selected");
+
+        if (!firstTile) {
+            firstTile = tile;
+        } else {
+            secondTile = tile;
+            checkMatch();
+        }
+    }
+
+    function checkMatch() {
+        if (firstTile.dataset.emoji === secondTile.dataset.emoji) {
+            firstTile.classList.add("match");
+            secondTile.classList.add("match");
+            firstTile.classList.remove("selected");
+            secondTile.classList.remove("selected");
+
+            setTimeout(() => {
+                firstTile.style.borderColor = "transparent";
+                secondTile.style.borderColor = "transparent";
+                firstTile = null;
+                secondTile = null;
+                updateProgress();
+                shuffleGrid();
+            }, 1000);
+        } else {
+            setTimeout(() => {
+                firstTile.classList.remove("selected");
+                secondTile.classList.remove("selected");
+                firstTile = null;
+                secondTile = null;
+            }, 500);
+        }
+    }
+
+    function updateProgress() {
+        matches++;
+        let progress = (matches / 10) * 100;
+        document.getElementById("progress").style.width = progress + "%";
+
+        if (matches === 10) {
+            setTimeout(() => {
+                level++;
+                document.getElementById("levelDisplay").textContent = `Level: ${level}`;
+                gridSize += 2;
+                matches = 0;
+                document.getElementById("progress").style.width = "0%";
+                generateGrid();
+            }, 500);
+        }
+    }
+
+    function shuffleGrid() {
+        const gameContainer = document.getElementById("gameContainer");
+        let tiles = Array.from(gameContainer.children);
+        let shuffledTiles = shuffleTiles(tiles.map(tile => tile.dataset.emoji));
+
+        tiles.forEach((tile, index) => {
+            tile.innerHTML = shuffledTiles[index];
+            tile.dataset.emoji = shuffledTiles[index];
+            tile.classList.remove("match", "selected");
+            tile.style.borderColor = "transparent";
+        });
+    }
+
+    function shuffleTiles(array) {
+        let shuffled;
+        do {
+            shuffled = array.sort(() => Math.random() - 0.5);
+        } while (hasAdjacentMatches(shuffled));
+        return shuffled;
+    }
+
+    function hasAdjacentMatches(arr) {
+        let size = Math.sqrt(arr.length);
+        for (let i = 0; i < arr.length; i++) {
+            if (i % size !== size - 1 && arr[i] === arr[i + 1]) return true;
+            if (i < arr.length - size && arr[i] === arr[i + size]) return true;
+        }
+        return false;
+    }
+
+    window.onload = () => {
+        document.getElementById("startModal").style.display = "flex";
+    };
+</script>
+
+</body>
+</html>
